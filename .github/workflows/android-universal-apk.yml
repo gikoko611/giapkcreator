@@ -1,0 +1,82 @@
+name: Android universal APK (debug)
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: HTTPS API origin embedded in this testing APK
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    name: Build universal debug APK
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_BASE_URL: ${{ inputs.api_base_url }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Validate API URL
+        run: |
+          node - <<'NODE'
+          const value = process.env.EXPO_PUBLIC_API_BASE_URL;
+          let url;
+          try { url = new URL(value); } catch { throw new Error("api_base_url must be a valid URL"); }
+          if (url.protocol !== "https:" || url.username || url.password) {
+            throw new Error("api_base_url must use HTTPS and contain no credentials");
+          }
+          console.log(`Using HTTPS API origin: ${url.origin}`);
+          NODE
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Android project
+        run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Verify icon and universal ABI configuration
+        run: |
+          grep -F 'reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64' android/gradle.properties
+          test -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png || find android/app/src/main/res -type f -iname '*launcher*' | grep -q .
+
+      - name: Build one installable universal APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK artifact
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: giapkcreator-universal-debug-apk-${{ github.run_number }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
