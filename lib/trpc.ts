@@ -4,6 +4,7 @@ import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
+import { getInstallationToken } from "@/lib/installation-token";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -27,7 +28,11 @@ export function createTRPCClient() {
         transformer: superjson,
         async headers() {
           const token = await Auth.getSessionToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
+          const installationToken = await getInstallationToken();
+          return {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "x-gi-installation-token": installationToken,
+          };
         },
         // Custom fetch to include credentials for cookie-based auth
         fetch(url, options) {

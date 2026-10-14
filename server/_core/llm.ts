@@ -54,6 +54,7 @@ export type ToolChoice = ToolChoicePrimitive | ToolChoiceByName | ToolChoiceExpl
 
 export type InvokeParams = {
   messages: Message[];
+  signal?: AbortSignal;
   tools?: Tool[];
   toolChoice?: ToolChoice;
   tool_choice?: ToolChoice;
@@ -261,7 +262,23 @@ const RETRY_MAX_DELAY_MS = 30_000;
 
 type FetchInit = NonNullable<Parameters<typeof fetch>[1]>;
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number, signal?: AbortSignal | null) => new Promise<void>((resolve, reject) => {
+  if (signal?.aborted) {
+    reject(signal.reason ?? new Error("LLM request aborted"));
+    return;
+  }
+  const finish = () => {
+    signal?.removeEventListener("abort", abort);
+    resolve();
+  };
+  const abort = () => {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+    reject(signal?.reason ?? new Error("LLM request aborted"));
+  };
+  const timer = setTimeout(finish, ms);
+  signal?.addEventListener("abort", abort, { once: true });
+});
 
 const parseRetryAfter = (value: string | null): number | undefined => {
   if (!value) return undefined;
@@ -286,6 +303,7 @@ const fetchWithBackoff = async (url: string, init: FetchInit): Promise<Response>
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
+    if (init.signal?.aborted) throw init.signal.reason ?? new Error("LLM request aborted");
     try {
       const response = await fetch(url, init);
       if (response.ok || attempt === RETRY_MAX_RETRIES) {
@@ -299,12 +317,13 @@ const fetchWithBackoff = async (url: string, init: FetchInit): Promise<Response>
         // Body already settled; nothing to clean up.
       }
       console.warn("LLM request retry scheduled after HTTP failure");
-      await sleep(computeBackoffDelay(attempt, retryAfterMs));
+      await sleep(computeBackoffDelay(attempt, retryAfterMs), init.signal);
     } catch (error) {
       lastError = error;
+      if (init.signal?.aborted) throw error;
       if (attempt === RETRY_MAX_RETRIES) throw error;
       console.warn("LLM request retry scheduled after network failure");
-      await sleep(computeBackoffDelay(attempt));
+      await sleep(computeBackoffDelay(attempt), init.signal);
     }
   }
 
@@ -318,6 +337,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   const {
     messages,
+    signal,
     tools,
     toolChoice,
     tool_choice,
@@ -379,6 +399,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       authorization: `Bearer ${ENV.forgeApiKey}`,
     },
     body: JSON.stringify(payload),
+    signal,
   });
 
   if (!response.ok) {

@@ -1,42 +1,48 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import type { ProviderId } from "@/lib/ai/providers";
 
-const KEY_NAME = "giapkcreator.ai.provider-key.v1";
-let webSessionKey = "";
+const KEY_PREFIX = "giapkcreator.ai.provider-key.v1.";
+const webSessionKeys = new Map<ProviderId, string>();
+
+function keyName(providerId: ProviderId): string {
+  return `${KEY_PREFIX}${providerId}`;
+}
 
 export function canPersistKeysSecurely(): boolean {
   return Platform.OS !== "web";
 }
 
-export async function readProviderKey(): Promise<string> {
-  if (Platform.OS === "web") return webSessionKey;
-  return (await SecureStore.getItemAsync(KEY_NAME)) ?? "";
+export async function readProviderKey(providerId: ProviderId): Promise<string> {
+  if (Platform.OS === "web") return webSessionKeys.get(providerId) ?? "";
+  return (await SecureStore.getItemAsync(keyName(providerId))) ?? "";
 }
 
-export async function hasProviderKey(): Promise<boolean> {
-  if (Platform.OS === "web") return Boolean(webSessionKey);
-  return Boolean(await SecureStore.getItemAsync(KEY_NAME));
+export async function hasProviderKey(providerId: ProviderId): Promise<boolean> {
+  if (Platform.OS === "web") return Boolean(webSessionKeys.get(providerId));
+  return Boolean(await SecureStore.getItemAsync(keyName(providerId)));
 }
 
-export async function saveProviderKey(value: string): Promise<void> {
+export async function saveProviderKey(providerId: ProviderId, value: string): Promise<void> {
   const trimmed = value.trim();
   if (Platform.OS === "web") {
-    webSessionKey = trimmed;
+    if (trimmed) webSessionKeys.set(providerId, trimmed);
+    else webSessionKeys.delete(providerId);
     return;
   }
   if (!trimmed) {
-    await SecureStore.deleteItemAsync(KEY_NAME);
+    await SecureStore.deleteItemAsync(keyName(providerId));
     return;
   }
-  await SecureStore.setItemAsync(KEY_NAME, trimmed, {
+  await SecureStore.setItemAsync(keyName(providerId), trimmed, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });
 }
 
-export async function clearProviderKey(): Promise<void> {
+export async function clearProviderKey(providerId: ProviderId): Promise<void> {
   if (Platform.OS === "web") {
-    webSessionKey = "";
+    webSessionKeys.delete(providerId);
     return;
   }
-  await SecureStore.deleteItemAsync(KEY_NAME);
+  await SecureStore.deleteItemAsync(keyName(providerId));
 }

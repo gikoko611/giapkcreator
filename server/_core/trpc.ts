@@ -10,6 +10,15 @@ const t = initTRPC.context<TrpcContext>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
+const requireInstallation = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.installationHash) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Valid app installation token required" });
+  }
+  return next({ ctx: { ...ctx, installationHash: ctx.installationHash } });
+});
+
+export const installationProcedure = t.procedure.use(requireInstallation);
+
 const requireUser = t.middleware(async (opts) => {
   const { ctx, next } = opts;
 

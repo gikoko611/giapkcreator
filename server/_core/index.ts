@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { createCorsMiddleware } from "./cors";
 import { clearLegacySessionCookie } from "./cookies";
+import { recoverInterruptedAiTasks } from "../features/ai";
 
 async function startServer() {
   const app = express();
@@ -37,6 +38,7 @@ async function startServer() {
   const port = parseInt(process.env.PORT || "3000");
   server.listen(port, () => {
     console.log("[api] server listening");
+    void recoverInterruptedAiTasks();
   });
 }
 
