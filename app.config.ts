@@ -26,7 +26,7 @@ const env = {
   appName: "G.I APK Creator",
   appSlug: "giapkcreator",
   logoUrl:
-    "https://files.manuscdn.com/user_upload_by_module/session_file/310519663988943681/RKihihpBFidggVsQ.png",
+    "https://files.manuscdn.com/user_upload_by_module/session_file/310519663988943681/WxXBLFZWICsGelNx.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,

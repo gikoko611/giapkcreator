@@ -12,6 +12,8 @@ Gradle ABI split APK များထုတ်မည့်အစား ရွေ�
 - `.github/workflows/android-universal-apk.yml` — universal debug APK ကို manual dispatch လုပ်ရန်။
 - `.github/workflows/android-redmi9a-armv7.yml` — Redmi 9A အတွက် 32-bit `armeabi-v7a` တစ်မျိုးတည်းပါသော debug APK ကို manual dispatch လုပ်ရန်။
 
+Redmi 9A workflow အောင်မြင်လျှင် APK ကို private GitHub repository ၏ **Releases** ထဲတွင် `v1.0.0-redmi9a-armv7.<run number>` tag ဖြင့်လည်း ထည့်ပေးမည်။ Actions artifact သည် 14 ရက်သာ သိမ်းထားသည်။
+
 Workflow နှစ်ခုလုံးတွင် HTTPS API origin ကို run လုပ်ချိန် input အဖြစ်ပေးသည်။ လက်ရှိ G.I APK Creator Preview API URL သည် ယာယီဖြစ်သောကြောင့် production အသုံးပြုမည့် APK အတွက် stable production API URL သတ်မှတ်ပြီးမှ build လုပ်ပါ။
 
 ## Signing နှင့် အသုံးပြုမှု
