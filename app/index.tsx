@@ -1,18 +1,37 @@
 import { useEffect, useState } from "react";
-import { Animated, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Animated, Pressable, Text, View } from "react-native";
+import { useRootNavigationState, useRouter } from "expo-router";
 import { BrandMark } from "@/components/gi/brand-mark";
 import { gi } from "@/constants/gi-theme";
 
 export default function SplashScreen() {
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const [progress] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    Animated.timing(progress, { toValue: 1, duration: 1250, useNativeDriver: false }).start();
-    const timer = setTimeout(() => router.replace("/(tabs)"), 1450);
-    return () => clearTimeout(timer);
-  }, [progress, router]);
+    const animation = Animated.timing(progress, { toValue: 1, duration: 1250, useNativeDriver: false });
+    animation.start();
+
+    // Wait for the root navigator to mount, then retry briefly if the first
+    // transition is lost during native app startup.
+    if (!rootNavigationState?.key) return () => animation.stop();
+
+    let attempts = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const openDashboard = () => {
+      router.replace("/(tabs)");
+      attempts += 1;
+      if (attempts < 4) retryTimer = setTimeout(openDashboard, 700);
+    };
+    const initialTimer = setTimeout(openDashboard, 1250);
+
+    return () => {
+      clearTimeout(initialTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+      animation.stop();
+    };
+  }, [progress, rootNavigationState?.key, router]);
 
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ["8%", "100%"] });
 
@@ -28,7 +47,15 @@ export default function SplashScreen() {
         <Animated.View style={{ width, height: 4, borderRadius: 4, backgroundColor: gi.cyan }} />
       </View>
       <Text style={{ color: gi.muted, fontSize: 11, marginTop: 13 }}>Workspace ကို ပြင်ဆင်နေသည်...</Text>
-      <Text style={{ color: gi.quiet, fontSize: 10, marginTop: 38, fontFamily: "monospace", letterSpacing: 1 }}>v1.0.0 · BETA</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Dashboard သို့ ဆက်ဝင်ရန်"
+        onPress={() => router.replace("/(tabs)")}
+        style={{ minHeight: 44, justifyContent: "center", alignItems: "center", marginTop: 22, paddingHorizontal: 18, borderRadius: 13, borderWidth: 1, borderColor: "#31576A", backgroundColor: "#0E2330" }}
+      >
+        <Text style={{ color: gi.cyan, fontSize: 12, fontWeight: "800" }}>မရွှေ့သေးပါက ဒီနေရာကိုနှိပ်ပါ</Text>
+      </Pressable>
+      <Text style={{ color: gi.quiet, fontSize: 10, marginTop: 24, fontFamily: "monospace", letterSpacing: 1 }}>v1.0.0 · BETA</Text>
     </View>
   );
 }
