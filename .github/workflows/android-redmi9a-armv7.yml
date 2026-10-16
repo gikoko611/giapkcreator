@@ -68,14 +68,18 @@ jobs:
           fi
           find android/app/src/main/res -type f -iname '*launcher*' | grep -q .
 
-      - name: Build one installable ARMv7 APK
+      - name: Build self-contained ARMv7 APK (debug-signed release variant)
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleRelease
 
-      - name: Verify APK contains only armeabi-v7a native libraries
+      - name: Verify standalone APK contains only armeabi-v7a
         run: |
-          APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          APK='android/app/build/outputs/apk/release/app-release.apk'
           test -s "$APK"
+          unzip -Z1 "$APK" | grep -Fxq 'assets/index.android.bundle'
+          JS_BYTES=$(unzip -p "$APK" assets/index.android.bundle | wc -c)
+          test "$JS_BYTES" -gt 0
+          echo "Embedded JavaScript bundle: ${JS_BYTES} bytes"
           ABI_LIST="$(unzip -Z1 "$APK" | awk -F/ '$1=="lib" && NF>=3 {print $2}' | sort -u)"
           printf 'Native ABIs in APK:\n%s\n' "$ABI_LIST"
           test "$ABI_LIST" = 'armeabi-v7a'
@@ -86,7 +90,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          APK='android/app/build/outputs/apk/debug/app-debug.apk'
+          APK='android/app/build/outputs/apk/release/app-release.apk'
           RELEASE_APK="$RUNNER_TEMP/GI-APK-Creator-Redmi9A-ARMv7-32bit-debug.apk"
           cp "$APK" "$RELEASE_APK"
           TAG="v1.0.0-redmi9a-armv7.${GITHUB_RUN_NUMBER}"
@@ -113,6 +117,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: giapkcreator-redmi9a-armeabi-v7a-debug-${{ github.run_number }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

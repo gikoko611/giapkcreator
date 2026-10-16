@@ -18,7 +18,9 @@ Workflow နှစ်ခုလုံးတွင် HTTPS API origin ကို r
 
 ## Signing နှင့် အသုံးပြုမှု
 
-ယခု workflows များသည် installable **debug-signed testing APK** များထုတ်သည်။ Play Store တင်မည့် release APK မဟုတ်ပါ။ Release signing အတွက် keystore နှင့် protected build configuration သီးခြားလိုအပ်သည်။
+ယခု workflows များသည် standalone **release variant** ကို build လုပ်ပြီး debug keystore ဖြင့် sign ထားသော testing APK များထုတ်သည်။ Play Store တင်မည့် production release မဟုတ်ပါ။ Production signing အတွက် keystore နှင့် protected build configuration သီးခြားလိုအပ်သည်။
+
+ဖုန်းတွင် Metro development server မလိုဘဲ အသုံးပြုနိုင်ရန် GitHub Actions သည် `assets/index.android.bundle` APK ထဲတွင် ပါရှိကြောင်း စစ်ဆေးသည်။ Expo ၏ release variant က JavaScript bundle ကို APK ထဲသို့ အလိုအလျောက် ထည့်သွင်းသည်။
 
 တူညီသော package ကို အခြား debug keystore ဖြင့် sign လုပ်ထားသော build တစ်ခုရှိပြီးသားဆိုလျှင် APK အသစ် install လုပ်ရာတွင် signature conflict ဖြစ်နိုင်သည်။ APK အဟောင်းကို uninstall လုပ်ပါက app ထဲရှိ local data ပျောက်နိုင်သောကြောင့် လိုအပ်သည့် data များကို ကြိုတင် backup လုပ်ပါ။
 

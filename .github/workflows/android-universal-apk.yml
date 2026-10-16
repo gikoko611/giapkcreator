@@ -63,20 +63,28 @@ jobs:
           grep -F 'reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64' android/gradle.properties
           test -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png || find android/app/src/main/res -type f -iname '*launcher*' | grep -q .
 
-      - name: Build one installable universal APK
+      - name: Build self-contained universal APK (debug-signed release variant)
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleRelease
 
-      - name: Verify APK artifact
+      - name: Verify standalone APK artifact
         run: |
-          test -s android/app/build/outputs/apk/debug/app-debug.apk
-          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
-          sha256sum android/app/build/outputs/apk/debug/app-debug.apk
+          APK='android/app/build/outputs/apk/release/app-release.apk'
+          test -s "$APK"
+          unzip -Z1 "$APK" | grep -Fxq 'assets/index.android.bundle'
+          JS_BYTES=$(unzip -p "$APK" assets/index.android.bundle | wc -c)
+          test "$JS_BYTES" -gt 0
+          echo "Embedded JavaScript bundle: ${JS_BYTES} bytes"
+          ABI_LIST=$(unzip -Z1 "$APK" | awk -F/ '$1=="lib" && NF>=3 {print $2}' | sort -u | paste -sd, -)
+          echo "Native ABIs: ${ABI_LIST}"
+          test "$ABI_LIST" = 'arm64-v8a,armeabi-v7a,x86,x86_64'
+          ls -lh "$APK"
+          sha256sum "$APK"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: giapkcreator-universal-debug-apk-${{ github.run_number }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
